@@ -7,5 +7,14 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>
+        <div className="site-frame">
+          <div className="site-content">{children}</div>
+          <footer className="production-credit">© 2026 Elton Malumbot Production</footer>
+        </div>
+      </body>
+    </html>
+  );
 }
