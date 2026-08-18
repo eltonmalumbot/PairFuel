@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import StoryShare from "./story-share";
+import LogoutButton from "./logout-button";
 
 export const dynamic = "force-dynamic";
 
@@ -106,12 +107,6 @@ async function updatePrivacy(fd: FormData) {
   revalidatePath("/dashboard");
 }
 
-async function signOut() {
-  "use server";
-  await auth.signOut();
-  redirect("/");
-}
-
 export default async function Dashboard({ searchParams }: { searchParams: Search }) {
   const user = await currentUser();
   await ensureUser(user);
@@ -144,7 +139,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Search
   const tabs = [["today","Today"],["history","All time"],["fasting","Fasting"],["weight","Weight"],["together","Together"],["settings","Privacy"]];
 
   return <main className="shell">
-    <header className="topbar"><div><strong>PairFuel</strong><div className="muted">Hi, {profile.display_name || user.name || "Friend"}</div></div><form action={signOut}><button className="ghost">Sign out</button></form></header>
+    <header className="topbar"><div><strong>PairFuel</strong><div className="muted">Hi, {profile.display_name || user.name || "Friend"}</div></div><LogoutButton /></header>
     <section className="dashboard">
       <div className="tabs">{tabs.map(([key,label]) => <a key={key} className={`tab ${tab === key ? "active" : ""}`} href={`/dashboard?tab=${key}`}>{label}</a>)}</div>
 
