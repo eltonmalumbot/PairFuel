@@ -88,3 +88,19 @@ CREATE TABLE IF NOT EXISTS pairfuel_partner_privacy (
   share_weight_change boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS pairfuel_slip_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id text NOT NULL,
+  happened_at timestamptz NOT NULL DEFAULT now(),
+  category text NOT NULL DEFAULT 'Other',
+  title text NOT NULL,
+  trigger text,
+  reflection text,
+  recovery_plan text,
+  estimated_calories integer CHECK (estimated_calories IS NULL OR estimated_calories >= 0),
+  share_with_partner boolean NOT NULL DEFAULT false,
+  resolved_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pairfuel_slip_user_time_idx ON pairfuel_slip_logs(user_id, happened_at DESC);
