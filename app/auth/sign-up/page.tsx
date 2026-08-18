@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAuth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ async function signUp(formData: FormData) {
   const name = String(formData.get("name") || "");
   const email = String(formData.get("email") || "");
   const password = String(formData.get("password") || "");
-  await getAuth().signUp.email({ name, email, password });
+  await auth.signUp.email({ name, email, password });
   redirect("/dashboard");
 }
 
