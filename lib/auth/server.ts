@@ -13,3 +13,8 @@ export function getAuth() {
     cookies: { secret },
   });
 }
+
+export const auth = {
+  getSession: async () => getAuth().getSession(),
+  signOut: async () => getAuth().signOut(),
+};
