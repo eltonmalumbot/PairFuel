@@ -1,20 +1,13 @@
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 
-export function getAuth() {
-  const baseUrl = process.env.NEON_AUTH_BASE_URL;
-  const secret = process.env.NEON_AUTH_COOKIE_SECRET;
+const baseUrl = process.env.NEON_AUTH_BASE_URL;
+const secret = process.env.NEON_AUTH_COOKIE_SECRET;
 
-  if (!baseUrl || !secret) {
-    throw new Error("Neon Auth runtime environment is not configured");
-  }
-
-  return createNeonAuth({
-    baseUrl,
-    cookies: { secret },
-  });
+if (!baseUrl || !secret) {
+  throw new Error("Neon Auth runtime environment is not configured");
 }
 
-export const auth = {
-  getSession: async () => getAuth().getSession(),
-  signOut: async () => getAuth().signOut(),
-};
+export const auth = createNeonAuth({
+  baseUrl,
+  cookies: { secret },
+});
