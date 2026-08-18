@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/server";
 
-export default function proxy() {
-  return NextResponse.next();
-}
+export default auth.middleware();
 
 export const config = {
   matcher: ["/dashboard/:path*"],
