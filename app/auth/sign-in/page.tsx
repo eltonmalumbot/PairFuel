@@ -4,19 +4,30 @@ import { auth } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
+type Search = Promise<{ error?: string }>;
+
 async function signIn(formData: FormData) {
   "use server";
   const email = String(formData.get("email") || "");
   const password = String(formData.get("password") || "");
-  await auth.signIn.email({ email, password });
+
+  const result = await auth.signIn.email({ email, password });
+  if (result?.error) {
+    const message = result.error.message || "Sign in failed";
+    redirect(`/auth/sign-in?error=${encodeURIComponent(message)}`);
+  }
+
   redirect("/dashboard");
 }
 
-export default function SignIn() {
+export default async function SignIn({ searchParams }: { searchParams: Search }) {
+  const params = await searchParams;
+
   return <main className="auth-wrap">
     <form action={signIn} className="auth-card">
       <p className="muted">PairFuel</p>
       <h1>Welcome back</h1>
+      {params.error && <div className="error" style={{ padding: 12, borderRadius: 12, marginBottom: 12 }}>{params.error}</div>}
       <label className="field">Email<input name="email" type="email" required /></label>
       <label className="field">Password<input name="password" type="password" required /></label>
       <button className="button">Sign in</button>
