@@ -70,14 +70,14 @@ async function getUserMetrics(userId: string): Promise<DailyStoryData> {
            COALESCE(SUM(protein),0)::numeric AS protein
     FROM pairfuel_food_logs
     WHERE user_id = ${userId}
-      AND logged_at::date = CURRENT_DATE
+      AND (logged_at AT TIME ZONE 'Asia/Jakarta')::date = (now() AT TIME ZONE 'Asia/Jakarta')::date
   `;
 
   const [water] = await sql`
     SELECT COALESCE(amount_ml,0)::int AS amount_ml
     FROM pairfuel_water_logs
     WHERE user_id = ${userId}
-      AND logged_on = CURRENT_DATE
+      AND logged_on = (now() AT TIME ZONE 'Asia/Jakarta')::date
     LIMIT 1
   `;
 
