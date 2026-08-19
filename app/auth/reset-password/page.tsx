@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const params = useSearchParams();
   const token = params.get("token") || "";
   const invalid = params.get("error");
@@ -60,4 +60,8 @@ export default function ResetPasswordPage() {
       <p className="muted"><Link href="/auth/sign-in">Back to sign in</Link></p>
     </form>
   </main>;
+}
+
+export default function ResetPasswordPage() {
+  return <Suspense fallback={<main className="auth-wrap"><div className="auth-card"><p className="muted">Loading reset form...</p></div></main>}><ResetPasswordForm /></Suspense>;
 }
