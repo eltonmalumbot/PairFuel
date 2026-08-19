@@ -2,18 +2,24 @@
   "name": "pairfuel",
   "version": "0.1.0",
   "private": true,
-  "scripts": {"dev":"next dev","build":"next build","start":"next start","typecheck":"tsc --noEmit"},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "qa": "npm run typecheck && npm run build"
+  },
   "dependencies": {
-    "@neondatabase/auth":"0.4.2-beta",
-    "@neondatabase/serverless":"^1.0.0",
-    "next":"16.2.9",
-    "react":"19.0.0",
-    "react-dom":"19.0.0"
+    "@neondatabase/auth": "0.4.2-beta",
+    "@neondatabase/serverless": "^1.0.0",
+    "next": "16.2.9",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@types/node":"22.15.3",
-    "@types/react":"19.1.2",
-    "@types/react-dom":"19.1.2",
-    "typescript":"5.8.3"
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.8.3"
   }
 }
