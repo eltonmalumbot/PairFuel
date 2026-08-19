@@ -122,7 +122,7 @@ async function acceptInvite(fd: FormData) {
     sql`UPDATE pairfuel_partner_invites SET accepted_at=now()
         WHERE id=${invite.id} AND accepted_at IS NULL
           AND EXISTS (SELECT 1 FROM pairfuel_partnerships WHERE (user_a_id=${inviterId} AND user_b_id=${user.id}) OR (user_a_id=${user.id} AND user_b_id=${inviterId}))`,
-  ], { isolationMode: "Serializable" });
+  ], { isolationLevel: "Serializable" });
 
   const connected = await sql`SELECT 1 FROM pairfuel_partnerships WHERE (user_a_id=${inviterId} AND user_b_id=${user.id}) OR (user_a_id=${user.id} AND user_b_id=${inviterId}) LIMIT 1`;
   if (!connected.length) redirect("/dashboard?tab=together&message=Could%20not%20connect.%20One%20of%20you%20may%20already%20have%20a%20partner.");
