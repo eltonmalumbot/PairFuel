@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
+import { formatJakartaDateTime, jakartaLocalToIso } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +24,14 @@ async function addSlip(fd: FormData) {
   "use server";
   const user = await currentUser();
   const sql = db();
-  const happenedAt = String(fd.get("happenedAt") || new Date().toISOString());
+  const happenedAt = jakartaLocalToIso(String(fd.get("happenedAt") || ""));
   const category = String(fd.get("category") || "Other");
-  const title = String(fd.get("title") || "Diet slip-up").trim();
-  const trigger = String(fd.get("trigger") || "").trim();
-  const reflection = String(fd.get("reflection") || "").trim();
-  const recovery = String(fd.get("recovery") || "").trim();
+  const title = String(fd.get("title") || "Diet slip-up").trim().slice(0, 180);
+  const trigger = String(fd.get("trigger") || "").trim().slice(0, 500);
+  const reflection = String(fd.get("reflection") || "").trim().slice(0, 3000);
+  const recovery = String(fd.get("recovery") || "").trim().slice(0, 3000);
   const estimatedCaloriesRaw = String(fd.get("estimatedCalories") || "").trim();
-  const estimatedCalories = estimatedCaloriesRaw ? Number(estimatedCaloriesRaw) : null;
+  const estimatedCalories = estimatedCaloriesRaw ? Math.max(0, Number(estimatedCaloriesRaw)) : null;
   const shareWithPartner = fd.get("shareWithPartner") === "on";
 
   await sql`INSERT INTO pairfuel_slip_logs(user_id,happened_at,category,title,trigger,reflection,recovery_plan,estimated_calories,share_with_partner) VALUES(${user.id},${happenedAt},${category},${title},${trigger || null},${reflection || null},${recovery || null},${estimatedCalories},${shareWithPartner})`;
@@ -69,7 +70,7 @@ export default async function SinListPage() {
           <label className="field">What happened?<input name="title" placeholder="Broke my fast with snacks" required /></label>
           <div className="form-row">
             <label className="field">Category<select name="category"><option>Broke fasting window</option><option>Over calorie target</option><option>Binge / overeating</option><option>Unplanned snack</option><option>Sugary drink</option><option>Skipped planned meal</option><option>Other</option></select></label>
-            <label className="field">When<input name="happenedAt" type="datetime-local" required /></label>
+            <label className="field">When (WIB)<input name="happenedAt" type="datetime-local" required /></label>
           </div>
           <label className="field">Estimated extra calories (optional)<input name="estimatedCalories" type="number" min="0" /></label>
           <label className="field">What triggered it?<input name="trigger" placeholder="Stress, boredom, seeing food, partner invited me..." /></label>
@@ -94,8 +95,8 @@ export default async function SinListPage() {
       </div>
 
       <div className="grid2" style={{ marginTop: 16 }}>
-        <div className="panel"><h2>My Sin List</h2><div className="list">{logs.length ? logs.map((item: any) => <div key={item.id} className="row" style={{ alignItems: "flex-start" }}><div><b>{item.title}</b><div className="muted">{item.category} · {new Date(item.happened_at).toLocaleString()}</div>{item.trigger && <div><b>Trigger:</b> {item.trigger}</div>}{item.reflection && <div><b>Reflection:</b> {item.reflection}</div>}{item.recovery_plan && <div><b>Next time:</b> {item.recovery_plan}</div>}{item.estimated_calories != null && <div className="muted">Estimated extra: {item.estimated_calories} kcal</div>}<div className="muted">{item.share_with_partner ? "Shared with partner" : "Private"}</div></div>{item.resolved_at ? <span className="pill">Recommitted ✓</span> : <form action={resolveSlip}><input type="hidden" name="id" value={item.id} /><button className="ghost">I&apos;m back on track</button></form>}</div>) : <p className="muted">No entries yet. That is a nice empty list to keep.</p>}</div></div>
-        <div className="panel"><h2>Partner reflections</h2><p className="muted">Only entries your partner explicitly chose to share appear here.</p><div className="list">{partnerLogs.length ? partnerLogs.map((item: any) => <div key={item.id} className="row" style={{ alignItems: "flex-start" }}><div><b>{item.title}</b><div className="muted">{item.category} · {new Date(item.happened_at).toLocaleString()}</div>{item.trigger && <div><b>Trigger:</b> {item.trigger}</div>}{item.recovery_plan && <div><b>Recovery:</b> {item.recovery_plan}</div>}</div><span>{item.resolved_at ? "✓" : "♡"}</span></div>) : <p className="muted">Nothing shared yet.</p>}</div></div>
+        <div className="panel"><h2>My Sin List</h2><div className="list">{logs.length ? logs.map((item: any) => <div key={item.id} className="row" style={{ alignItems: "flex-start" }}><div><b>{item.title}</b><div className="muted">{item.category} · {formatJakartaDateTime(item.happened_at)} WIB</div>{item.trigger && <div><b>Trigger:</b> {item.trigger}</div>}{item.reflection && <div><b>Reflection:</b> {item.reflection}</div>}{item.recovery_plan && <div><b>Next time:</b> {item.recovery_plan}</div>}{item.estimated_calories != null && <div className="muted">Estimated extra: {item.estimated_calories} kcal</div>}<div className="muted">{item.share_with_partner ? "Shared with partner" : "Private"}</div></div>{item.resolved_at ? <span className="pill">Recommitted ✓</span> : <form action={resolveSlip}><input type="hidden" name="id" value={item.id} /><button className="ghost">I&apos;m back on track</button></form>}</div>) : <p className="muted">No entries yet. That is a nice empty list to keep.</p>}</div></div>
+        <div className="panel"><h2>Partner reflections</h2><p className="muted">Only entries your partner explicitly chose to share appear here.</p><div className="list">{partnerLogs.length ? partnerLogs.map((item: any) => <div key={item.id} className="row" style={{ alignItems: "flex-start" }}><div><b>{item.title}</b><div className="muted">{item.category} · {formatJakartaDateTime(item.happened_at)} WIB</div>{item.trigger && <div><b>Trigger:</b> {item.trigger}</div>}{item.recovery_plan && <div><b>Recovery:</b> {item.recovery_plan}</div>}</div><span>{item.resolved_at ? "✓" : "♡"}</span></div>) : <p className="muted">Nothing shared yet.</p>}</div></div>
       </div>
     </section>
   </main>;
