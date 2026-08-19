@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function VerifyEmailPage() {
+function VerifyEmailForm() {
   const params = useSearchParams();
   const email = params.get("email") || "";
-  const [message, setMessage] = useState("Check your email for the 6-digit verification code.");
+  const [message, setMessage] = useState("Check your email for the verification code.");
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
 
@@ -65,4 +65,8 @@ export default function VerifyEmailPage() {
       <p className="muted"><Link href="/auth/sign-in">Back to sign in</Link></p>
     </form>
   </main>;
+}
+
+export default function VerifyEmailPage() {
+  return <Suspense fallback={<main className="auth-wrap"><div className="auth-card"><p className="muted">Loading verification...</p></div></main>}><VerifyEmailForm /></Suspense>;
 }
