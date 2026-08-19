@@ -79,11 +79,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS pairfuel_partner_b_unique ON pairfuel_partners
 
 CREATE TABLE IF NOT EXISTS pairfuel_partner_privacy (
   user_id text PRIMARY KEY,
-  share_calories boolean NOT NULL DEFAULT true,
-  share_macros boolean NOT NULL DEFAULT true,
-  share_meals boolean NOT NULL DEFAULT true,
-  share_fasting boolean NOT NULL DEFAULT true,
-  share_water boolean NOT NULL DEFAULT true,
+  share_calories boolean NOT NULL DEFAULT false,
+  share_macros boolean NOT NULL DEFAULT false,
+  share_meals boolean NOT NULL DEFAULT false,
+  share_fasting boolean NOT NULL DEFAULT false,
+  share_water boolean NOT NULL DEFAULT false,
   share_weight boolean NOT NULL DEFAULT false,
   share_weight_change boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
