@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "qa": "npm run typecheck && npm run build"
+    "test:regression": "node scripts/regression-check.mjs",
+    "qa": "npm run test:regression && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@neondatabase/auth": "0.4.2-beta",
