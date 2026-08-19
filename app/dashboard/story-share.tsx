@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type StoryType = "daily" | "together";
 
@@ -13,12 +13,20 @@ export default function StoryShare({ showTogether }: StoryShareProps) {
   const [type, setType] = useState<StoryType>("daily");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [previewNonce, setPreviewNonce] = useState(0);
 
   const url = `/api/story/${type}`;
+  const previewUrl = useMemo(() => `${url}?preview=${previewNonce}`, [url, previewNonce]);
 
   useEffect(() => {
     if (!open) setMessage("");
   }, [open]);
+
+  function chooseType(nextType: StoryType) {
+    setType(nextType);
+    setPreviewNonce((value) => value + 1);
+    setMessage("");
+  }
 
   async function fetchStoryBlob() {
     const response = await fetch(url, { cache: "no-store" });
@@ -63,7 +71,14 @@ export default function StoryShare({ showTogether }: StoryShareProps) {
         });
         setMessage("Share sheet opened ✓");
       } else {
-        await downloadStory();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = `pairfuel-${type}-story.png`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
         setMessage("Direct image sharing is not supported here, so the PNG was downloaded instead.");
       }
     } catch (error) {
@@ -82,7 +97,7 @@ export default function StoryShare({ showTogether }: StoryShareProps) {
           <h2>Flex your progress 📸</h2>
           <p className="muted">Preview a 9:16 PairFuel story card, then download or share it from your device.</p>
         </div>
-        <button className="button" type="button" onClick={() => setOpen(true)}>Create Story</button>
+        <button className="button" type="button" onClick={() => { setOpen(true); setPreviewNonce((value) => value + 1); }}>Create Story</button>
       </div>
 
       {open && (
@@ -97,17 +112,18 @@ export default function StoryShare({ showTogether }: StoryShareProps) {
             </div>
 
             <div className="story-type-switcher">
-              <button className={`tab ${type === "daily" ? "active" : ""}`} type="button" onClick={() => setType("daily")}>Daily Progress 🔥</button>
-              <button className={`tab ${type === "together" ? "active" : ""}`} type="button" onClick={() => setType("together")} disabled={!showTogether}>Together 💑</button>
+              <button className={`tab ${type === "daily" ? "active" : ""}`} type="button" onClick={() => chooseType("daily")}>Daily Progress 🔥</button>
+              <button className={`tab ${type === "together" ? "active" : ""}`} type="button" onClick={() => chooseType("together")} disabled={!showTogether}>Together 💑</button>
             </div>
 
             {!showTogether && type === "daily" && <p className="muted">Connect a partner to unlock Together Story.</p>}
 
             <div className="story-preview-shell">
-              <img className="story-preview-image" src={`${url}?preview=${Date.now()}`} alt={`${type} PairFuel story preview`} />
+              <img className="story-preview-image" src={previewUrl} alt={`${type} PairFuel story preview`} />
             </div>
 
             <div className="story-modal-actions">
+              <button className="ghost" type="button" onClick={() => setPreviewNonce((value) => value + 1)} disabled={busy}>Refresh preview</button>
               <a className="ghost" href={url} target="_blank" rel="noreferrer">Open full image</a>
               <button className="ghost" type="button" onClick={downloadStory} disabled={busy}>{busy ? "Working..." : "Download PNG"}</button>
               <button className="button" type="button" onClick={shareStory} disabled={busy}>{busy ? "Working..." : "Share Story"}</button>
