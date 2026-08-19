@@ -102,22 +102,31 @@ async function acceptInvite(fd: FormData) {
   await ensureUser(user);
   const code = String(fd.get("code") || "").trim().toUpperCase();
   if (!code) redirect("/dashboard?tab=together&message=Enter%20an%20invite%20code.");
+
   const invites = await sql`SELECT id,inviter_user_id FROM pairfuel_partner_invites WHERE code=${code} AND accepted_at IS NULL AND expires_at>now() LIMIT 1`;
   if (!invites.length) redirect("/dashboard?tab=together&message=Invite%20code%20is%20invalid%20or%20expired.");
-  if (invites[0].inviter_user_id === user.id) redirect("/dashboard?tab=together&message=You%20cannot%20connect%20to%20your%20own%20invite.");
-  const mine = await sql`SELECT 1 FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id} LIMIT 1`;
-  if (mine.length) redirect("/dashboard?tab=together&message=You%20already%20have%20a%20partner.");
-  const theirs = await sql`SELECT 1 FROM pairfuel_partnerships WHERE user_a_id=${invites[0].inviter_user_id} OR user_b_id=${invites[0].inviter_user_id} LIMIT 1`;
-  if (theirs.length) redirect("/dashboard?tab=together&message=That%20user%20is%20already%20connected.");
-  await sql`BEGIN`;
-  try {
-    await sql`INSERT INTO pairfuel_partnerships(user_a_id,user_b_id) VALUES(${invites[0].inviter_user_id},${user.id})`;
-    await sql`UPDATE pairfuel_partner_invites SET accepted_at=now() WHERE id=${invites[0].id} AND accepted_at IS NULL`;
-    await sql`COMMIT`;
-  } catch (error) {
-    await sql`ROLLBACK`;
-    throw error;
-  }
+
+  const invite = invites[0];
+  const inviterId = String(invite.inviter_user_id);
+  if (inviterId === user.id) redirect("/dashboard?tab=together&message=You%20cannot%20connect%20to%20your%20own%20invite.");
+
+  const [lockA, lockB] = [user.id, inviterId].sort();
+  await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtext(${lockA}))`,
+    sql`SELECT pg_advisory_xact_lock(hashtext(${lockB}))`,
+    sql`INSERT INTO pairfuel_partnerships(user_a_id,user_b_id)
+        SELECT ${inviterId},${user.id}
+        WHERE NOT EXISTS (SELECT 1 FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id})
+          AND NOT EXISTS (SELECT 1 FROM pairfuel_partnerships WHERE user_a_id=${inviterId} OR user_b_id=${inviterId})
+          AND EXISTS (SELECT 1 FROM pairfuel_partner_invites WHERE id=${invite.id} AND accepted_at IS NULL AND expires_at>now())`,
+    sql`UPDATE pairfuel_partner_invites SET accepted_at=now()
+        WHERE id=${invite.id} AND accepted_at IS NULL
+          AND EXISTS (SELECT 1 FROM pairfuel_partnerships WHERE (user_a_id=${inviterId} AND user_b_id=${user.id}) OR (user_a_id=${user.id} AND user_b_id=${inviterId}))`,
+  ], { isolationMode: "Serializable" });
+
+  const connected = await sql`SELECT 1 FROM pairfuel_partnerships WHERE (user_a_id=${inviterId} AND user_b_id=${user.id}) OR (user_a_id=${user.id} AND user_b_id=${inviterId}) LIMIT 1`;
+  if (!connected.length) redirect("/dashboard?tab=together&message=Could%20not%20connect.%20One%20of%20you%20may%20already%20have%20a%20partner.");
+
   revalidatePath("/dashboard");
   redirect("/dashboard?tab=together&message=Partner%20connected%20successfully.");
 }
