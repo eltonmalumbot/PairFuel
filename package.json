@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run test:regression && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:regression": "node scripts/regression-check.mjs",
-    "qa": "npm run test:regression && npm run typecheck && npm run build"
+    "qa": "npm run test:regression && npm run typecheck && next build"
   },
   "dependencies": {
     "@neondatabase/auth": "0.4.2-beta",
