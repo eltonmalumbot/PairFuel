@@ -133,7 +133,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Search
     const [pweight] = await sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on DESC LIMIT 1`;
     const [pfirst] = await sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on ASC LIMIT 1`;
     const [pfast] = await sql`SELECT started_at,ended_at,target_hours FROM pairfuel_fasting_sessions WHERE user_id=${pid} ORDER BY started_at DESC LIMIT 1`;
-    partner = { ...pp, today: pt, water: pw, weight: pweight?.weight, weightChange: pweight && pfirst ? Number(pweight.weight) - Number(pfirst.weight) : null, fast: pfast };
+    partner = { ...pp, today: pt, water: pw ?? { amount_ml: 0 }, weight: pweight?.weight, weightChange: pweight && pfirst ? Number(pweight.weight) - Number(pfirst.weight) : null, fast: pfast };
   }
 
   const tabs = [["today","Today"],["history","All time"],["fasting","Fasting"],["weight","Weight"],["together","Together"],["settings","Privacy"]];
