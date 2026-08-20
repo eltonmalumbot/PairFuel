@@ -29,7 +29,7 @@ assert.match(schema, /share_weight boolean NOT NULL DEFAULT false/, "Absolute we
 assert.match(schema, /share_weight_change boolean NOT NULL DEFAULT true/, "Weight-change-only sharing remains the privacy-friendly default");
 assert.match(calorieAi, /auth\.getSession\(\)/, "Calorie AI must require an authenticated PairFuel session");
 assert.match(calorieAi, /process\.env\.GEMINI_API_KEY/, "Gemini key must remain server-side");
-assert.match(calorieAi, /gemini-2\.5-flash-lite/, "Calorie AI must keep the expected Gemini default model");
+assert.match(calorieAi, /gemini-3\.5-flash-lite/, "Calorie AI must keep the current Gemini fallback model");
 assert.doesNotMatch(calorieAi, /OPENAI_API_KEY|api\.openai\.com/, "Calorie AI must not depend on OpenAI");
 assert.match(dashboardLayout, /\/dashboard\/ask-ai/, "Dashboard must expose the AI calorie assistant");
 
