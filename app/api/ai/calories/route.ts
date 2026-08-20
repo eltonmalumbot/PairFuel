@@ -82,46 +82,57 @@ export async function POST(request: Request) {
     return Response.json({ error: "Please send a food or calorie question." }, { status: 400 });
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const contents = messages.map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
     parts: [{ text: message.content }],
   }));
 
-  try {
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: INSTRUCTIONS }],
-          },
-          contents,
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 450,
-          },
-        }),
-      },
-    );
+  const configuredModel = process.env.GEMINI_MODEL?.trim();
+  const models = Array.from(new Set([configuredModel, "gemini-3.5-flash-lite"].filter(Boolean))) as string[];
 
-    const data = (await upstream.json()) as GeminiResponse;
-    if (!upstream.ok) {
+  try {
+    for (const [index, model] of models.entries()) {
+      const upstream = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: INSTRUCTIONS }],
+            },
+            contents,
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 450,
+            },
+          }),
+        },
+      );
+
+      const data = (await upstream.json()) as GeminiResponse;
+      if (upstream.ok) {
+        const answer = responseText(data);
+        if (!answer) {
+          return Response.json({ error: "The calorie assistant returned an empty response." }, { status: 502 });
+        }
+        return Response.json({ answer });
+      }
+
+      const hasFallback = index < models.length - 1;
+      if (upstream.status === 404 && hasFallback) {
+        console.warn("PairFuel Gemini model unavailable; trying fallback", model);
+        continue;
+      }
+
       console.error("PairFuel Gemini calorie AI upstream error", upstream.status, data.error?.message || "Unknown error");
       return Response.json({ error: "The calorie assistant is temporarily unavailable." }, { status: 502 });
     }
 
-    const answer = responseText(data);
-    if (!answer) {
-      return Response.json({ error: "The calorie assistant returned an empty response." }, { status: 502 });
-    }
-
-    return Response.json({ answer });
+    return Response.json({ error: "The calorie assistant is temporarily unavailable." }, { status: 502 });
   } catch (error) {
     console.error("PairFuel Gemini calorie AI request failed", error);
     return Response.json({ error: "The calorie assistant is temporarily unavailable." }, { status: 502 });
