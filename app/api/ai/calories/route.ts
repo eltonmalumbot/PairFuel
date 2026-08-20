@@ -8,10 +8,11 @@ type ChatMessage = {
   content: string;
 };
 
-type OpenAIResponse = {
-  output?: Array<{
-    type?: string;
-    content?: Array<{ type?: string; text?: string }>;
+type GeminiResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ text?: string }>;
+    };
   }>;
   error?: { message?: string };
 };
@@ -47,11 +48,9 @@ function sanitizeMessages(value: unknown): ChatMessage[] {
     .slice(-8);
 }
 
-function responseText(data: OpenAIResponse) {
-  return (data.output || [])
-    .filter((item) => item.type === "message")
-    .flatMap((item) => item.content || [])
-    .filter((part) => part.type === "output_text" && typeof part.text === "string")
+function responseText(data: GeminiResponse) {
+  return (data.candidates || [])
+    .flatMap((candidate) => candidate.content?.parts || [])
     .map((part) => part.text || "")
     .join("\n")
     .trim();
@@ -63,10 +62,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "AI Calorie Assistant is not configured yet. Add OPENAI_API_KEY to the PairFuel server environment." },
+      { error: "AI Calorie Assistant is not configured yet. Add GEMINI_API_KEY to the PairFuel server environment." },
       { status: 503 },
     );
   }
@@ -83,27 +82,37 @@ export async function POST(request: Request) {
     return Response.json({ error: "Please send a food or calorie question." }, { status: 400 });
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+  const contents = messages.map((message) => ({
+    role: message.role === "assistant" ? "model" : "user",
+    parts: [{ text: message.content }],
+  }));
 
   try {
-    const upstream = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
+    const upstream = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: INSTRUCTIONS }],
+          },
+          contents,
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 450,
+          },
+        }),
       },
-      body: JSON.stringify({
-        model,
-        store: false,
-        instructions: INSTRUCTIONS,
-        input: messages,
-        max_output_tokens: 450,
-      }),
-    });
+    );
 
-    const data = (await upstream.json()) as OpenAIResponse;
+    const data = (await upstream.json()) as GeminiResponse;
     if (!upstream.ok) {
-      console.error("PairFuel calorie AI upstream error", upstream.status, data.error?.message || "Unknown error");
+      console.error("PairFuel Gemini calorie AI upstream error", upstream.status, data.error?.message || "Unknown error");
       return Response.json({ error: "The calorie assistant is temporarily unavailable." }, { status: 502 });
     }
 
@@ -114,7 +123,7 @@ export async function POST(request: Request) {
 
     return Response.json({ answer });
   } catch (error) {
-    console.error("PairFuel calorie AI request failed", error);
+    console.error("PairFuel Gemini calorie AI request failed", error);
     return Response.json({ error: "The calorie assistant is temporarily unavailable." }, { status: 502 });
   }
 }
