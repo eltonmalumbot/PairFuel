@@ -5,6 +5,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     {children}
     <div style={{ position: "fixed", right: 22, bottom: 22, zIndex: 50, display: "grid", gap: 10 }}>
       <a
+        href="/dashboard/ask-ai"
+        className="ghost"
+        style={{ boxShadow: "0 10px 30px #0008", background: "#0d1d15" }}
+        aria-label="Ask AI about food calories"
+      >
+        Ask AI 🍽️
+      </a>
+      <a
         href="/dashboard/analytics"
         className="ghost"
         style={{ boxShadow: "0 10px 30px #0008", background: "#0d1d15" }}
