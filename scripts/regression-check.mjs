@@ -28,8 +28,9 @@ assert.match(schema, /share_macros boolean NOT NULL DEFAULT false/, "New users m
 assert.match(schema, /share_weight boolean NOT NULL DEFAULT false/, "Absolute weight must remain private by default");
 assert.match(schema, /share_weight_change boolean NOT NULL DEFAULT true/, "Weight-change-only sharing remains the privacy-friendly default");
 assert.match(calorieAi, /auth\.getSession\(\)/, "Calorie AI must require an authenticated PairFuel session");
-assert.match(calorieAi, /process\.env\.OPENAI_API_KEY/, "OpenAI key must remain server-side");
-assert.match(calorieAi, /store\s*:\s*false/, "Calorie AI Responses API calls must disable response storage");
+assert.match(calorieAi, /process\.env\.GEMINI_API_KEY/, "Gemini key must remain server-side");
+assert.match(calorieAi, /gemini-2\.5-flash-lite/, "Calorie AI must keep the expected Gemini default model");
+assert.doesNotMatch(calorieAi, /OPENAI_API_KEY|api\.openai\.com/, "Calorie AI must not depend on OpenAI");
 assert.match(dashboardLayout, /\/dashboard\/ask-ai/, "Dashboard must expose the AI calorie assistant");
 
 for (const route of [
