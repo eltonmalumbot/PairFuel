@@ -11,6 +11,8 @@ const time = await text("lib/time.ts");
 const schema = await text("db/schema.sql");
 const signIn = await text("app/auth/sign-in/page.tsx");
 const errorBoundary = await text("app/error.tsx");
+const calorieAi = await text("app/api/ai/calories/route.ts");
+const dashboardLayout = await text("app/dashboard/layout.tsx");
 
 assert.match(time, /Asia\/Jakarta/, "Timezone helper must remain Asia/Jakarta");
 assert.match(dashboard, /AT TIME ZONE 'Asia\/Jakarta'/, "Dashboard Today queries must remain WIB-safe");
@@ -25,12 +27,18 @@ assert.match(schema, /share_calories boolean NOT NULL DEFAULT false/, "New users
 assert.match(schema, /share_macros boolean NOT NULL DEFAULT false/, "New users must not share macros by default");
 assert.match(schema, /share_weight boolean NOT NULL DEFAULT false/, "Absolute weight must remain private by default");
 assert.match(schema, /share_weight_change boolean NOT NULL DEFAULT true/, "Weight-change-only sharing remains the privacy-friendly default");
+assert.match(calorieAi, /auth\.getSession\(\)/, "Calorie AI must require an authenticated PairFuel session");
+assert.match(calorieAi, /process\.env\.OPENAI_API_KEY/, "OpenAI key must remain server-side");
+assert.match(calorieAi, /store\s*:\s*false/, "Calorie AI Responses API calls must disable response storage");
+assert.match(dashboardLayout, /\/dashboard\/ask-ai/, "Dashboard must expose the AI calorie assistant");
 
 for (const route of [
   "app/auth/forgot-password/page.tsx",
   "app/auth/reset-password/page.tsx",
   "app/auth/verify-email/page.tsx",
   "app/dashboard/analytics/page.tsx",
+  "app/dashboard/ask-ai/page.tsx",
+  "app/api/ai/calories/route.ts",
 ]) {
   await text(route);
 }
