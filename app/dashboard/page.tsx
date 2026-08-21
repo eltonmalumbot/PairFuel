@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { formatJakartaDateTime, jakartaLocalToIso } from "@/lib/time";
+import { dateOnly, numberInRange, oneOf, requiredText } from "@/lib/validation";
 import StoryShare from "./story-share";
 import LogoutButton from "./logout-button";
 
@@ -19,8 +20,10 @@ async function currentUser() {
 
 async function ensureUser(user: { id: string; name?: string | null }) {
   const sql = db();
-  await sql`INSERT INTO pairfuel_profiles(user_id,display_name) VALUES(${user.id},${user.name || "Friend"}) ON CONFLICT(user_id) DO NOTHING`;
-  await sql`INSERT INTO pairfuel_partner_privacy(user_id) VALUES(${user.id}) ON CONFLICT(user_id) DO NOTHING`;
+  await sql.transaction([
+    sql`INSERT INTO pairfuel_profiles(user_id,display_name) VALUES(${user.id},${user.name || "Friend"}) ON CONFLICT(user_id) DO NOTHING`,
+    sql`INSERT INTO pairfuel_partner_privacy(user_id) VALUES(${user.id}) ON CONFLICT(user_id) DO NOTHING`,
+  ]);
 }
 
 async function addFood(fd: FormData) {
@@ -29,7 +32,13 @@ async function addFood(fd: FormData) {
   const sql = db();
   await ensureUser(user);
   const loggedAt = jakartaLocalToIso(String(fd.get("loggedAt") || ""));
-  await sql`INSERT INTO pairfuel_food_logs(user_id,logged_at,meal,food_name,calories,protein,carbs,fat) VALUES(${user.id},${loggedAt},${String(fd.get("meal") || "Meal")},${String(fd.get("food") || "Food")},${Number(fd.get("calories") || 0)},${Number(fd.get("protein") || 0)},${Number(fd.get("carbs") || 0)},${Number(fd.get("fat") || 0)}`;
+  const meal = oneOf(fd.get("meal"), ["Breakfast", "Lunch", "Dinner", "Snack", "First Meal"] as const, "Lunch");
+  const food = requiredText(fd.get("food"), "Food", 180);
+  const calories = numberInRange(fd.get("calories"), "Calories", 0, 20_000);
+  const protein = numberInRange(fd.get("protein") ?? "0", "Protein", 0, 1_000);
+  const carbs = numberInRange(fd.get("carbs") ?? "0", "Carbs", 0, 2_000);
+  const fat = numberInRange(fd.get("fat") ?? "0", "Fat", 0, 1_000);
+  await sql`INSERT INTO pairfuel_food_logs(user_id,logged_at,meal,food_name,calories,protein,carbs,fat) VALUES(${user.id},${loggedAt},${meal},${food},${calories},${protein},${carbs},${fat})`;
   revalidatePath("/dashboard");
 }
 
@@ -38,7 +47,9 @@ async function addWeight(fd: FormData) {
   const user = await currentUser();
   const sql = db();
   await ensureUser(user);
-  await sql`INSERT INTO pairfuel_weight_logs(user_id,logged_on,weight) VALUES(${user.id},${String(fd.get("date"))},${Number(fd.get("weight"))}) ON CONFLICT(user_id,logged_on) DO UPDATE SET weight=EXCLUDED.weight`;
+  const loggedOn = dateOnly(fd.get("date"));
+  const weight = numberInRange(fd.get("weight"), "Weight", 1, 1_000);
+  await sql`INSERT INTO pairfuel_weight_logs(user_id,logged_on,weight) VALUES(${user.id},${loggedOn},${weight}) ON CONFLICT(user_id,logged_on) DO UPDATE SET weight=EXCLUDED.weight`;
   revalidatePath("/dashboard");
 }
 
@@ -47,7 +58,7 @@ async function addWater(fd: FormData) {
   const user = await currentUser();
   const sql = db();
   await ensureUser(user);
-  const amount = Math.max(1, Number(fd.get("amount") || 250));
+  const amount = numberInRange(fd.get("amount") ?? "250", "Water", 1, 5_000);
   await sql`INSERT INTO pairfuel_water_logs(user_id,logged_on,amount_ml) VALUES(${user.id},(now() AT TIME ZONE 'Asia/Jakarta')::date,${amount}) ON CONFLICT(user_id,logged_on) DO UPDATE SET amount_ml=pairfuel_water_logs.amount_ml+EXCLUDED.amount_ml,updated_at=now()`;
   revalidatePath("/dashboard");
 }
@@ -57,9 +68,11 @@ async function startFast(fd: FormData) {
   const user = await currentUser();
   const sql = db();
   await ensureUser(user);
-  const target = Number(fd.get("target") || 16);
-  await sql`UPDATE pairfuel_fasting_sessions SET ended_at=now() WHERE user_id=${user.id} AND ended_at IS NULL`;
-  await sql`INSERT INTO pairfuel_fasting_sessions(user_id,started_at,target_hours) VALUES(${user.id},now(),${target})`;
+  const target = numberInRange(fd.get("target") ?? "16", "Fasting target", 1, 24);
+  await sql.transaction([
+    sql`UPDATE pairfuel_fasting_sessions SET ended_at=now() WHERE user_id=${user.id} AND ended_at IS NULL`,
+    sql`INSERT INTO pairfuel_fasting_sessions(user_id,started_at,target_hours) VALUES(${user.id},now(),${target})`,
+  ]);
   revalidatePath("/dashboard");
 }
 
@@ -154,14 +167,14 @@ async function updateGoals(fd: FormData) {
   "use server";
   const user = await currentUser();
   const sql = db();
-  const calories = Math.max(1200, Number(fd.get("calorieTarget") || 1900));
-  const protein = Math.max(0, Number(fd.get("proteinTarget") || 130));
-  const carbs = Math.max(0, Number(fd.get("carbTarget") || 190));
-  const fat = Math.max(0, Number(fd.get("fatTarget") || 65));
-  const water = Math.max(500, Number(fd.get("waterTarget") || 2500));
+  const calories = numberInRange(fd.get("calorieTarget") ?? "1900", "Calorie target", 1200, 10_000);
+  const protein = numberInRange(fd.get("proteinTarget") ?? "130", "Protein target", 0, 1_000);
+  const carbs = numberInRange(fd.get("carbTarget") ?? "190", "Carb target", 0, 2_000);
+  const fat = numberInRange(fd.get("fatTarget") ?? "65", "Fat target", 0, 1_000);
+  const water = numberInRange(fd.get("waterTarget") ?? "2500", "Water target", 500, 20_000);
   const goalWeightRaw = String(fd.get("goalWeight") || "").trim();
-  const goalWeight = goalWeightRaw ? Number(goalWeightRaw) : null;
-  const fastingPreset = String(fd.get("fastingPreset") || "16:8");
+  const goalWeight = goalWeightRaw ? numberInRange(fd.get("goalWeight"), "Goal weight", 1, 1_000) : null;
+  const fastingPreset = oneOf(fd.get("fastingPreset"), ["12:12", "14:10", "16:8", "18:6"] as const, "16:8");
   const displayName = String(fd.get("displayName") || "Friend").trim().slice(0, 80) || "Friend";
   await sql`UPDATE pairfuel_profiles SET display_name=${displayName},calorie_target=${calories},protein_target=${protein},carb_target=${carbs},fat_target=${fat},water_target=${water},goal_weight=${goalWeight},fasting_preset=${fastingPreset},updated_at=now() WHERE user_id=${user.id}`;
   revalidatePath("/dashboard");
@@ -170,35 +183,79 @@ async function updateGoals(fd: FormData) {
 
 export default async function Dashboard({ searchParams }: { searchParams: Search }) {
   const user = await currentUser();
-  await ensureUser(user);
   const sql = db();
   const params = await searchParams;
-  const tab = params.tab || "today";
+  const tabs = [["today","Today"],["history","All time"],["fasting","Fasting"],["weight","Weight"],["together","Together"],["goals","Goals"],["settings","Privacy"]] as const;
+  const tab = tabs.some(([key]) => key === params.tab) ? params.tab! : "today";
   const message = params.message;
 
-  const [profile] = await sql`SELECT * FROM pairfuel_profiles WHERE user_id=${user.id}`;
-  const [today] = await sql`SELECT COALESCE(SUM(calories),0)::int calories,COALESCE(SUM(protein),0)::numeric protein,COALESCE(SUM(carbs),0)::numeric carbs,COALESCE(SUM(fat),0)::numeric fat FROM pairfuel_food_logs WHERE user_id=${user.id} AND (logged_at AT TIME ZONE 'Asia/Jakarta')::date=(now() AT TIME ZONE 'Asia/Jakarta')::date`;
-  const [water] = await sql`SELECT COALESCE(amount_ml,0)::int amount_ml FROM pairfuel_water_logs WHERE user_id=${user.id} AND logged_on=(now() AT TIME ZONE 'Asia/Jakarta')::date`;
-  const foodHistory = await sql`SELECT id,logged_at,meal,food_name,calories,protein,carbs,fat FROM pairfuel_food_logs WHERE user_id=${user.id} ORDER BY logged_at DESC LIMIT 100`;
-  const weights = await sql`SELECT logged_on,weight FROM pairfuel_weight_logs WHERE user_id=${user.id} ORDER BY logged_on DESC LIMIT 30`;
-  const fasts = await sql`SELECT id,started_at,ended_at,target_hours FROM pairfuel_fasting_sessions WHERE user_id=${user.id} ORDER BY started_at DESC LIMIT 20`;
-  const [partnership] = await sql`SELECT *,CASE WHEN user_a_id=${user.id} THEN user_b_id ELSE user_a_id END partner_id FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id} LIMIT 1`;
-  const [invite] = await sql`SELECT code,expires_at FROM pairfuel_partner_invites WHERE inviter_user_id=${user.id} AND accepted_at IS NULL AND expires_at>now() ORDER BY created_at DESC LIMIT 1`;
-  const [privacy] = await sql`SELECT * FROM pairfuel_partner_privacy WHERE user_id=${user.id}`;
+  const needsPartnership = tab === "today" || tab === "together";
+  const [profileRows, todayRows, waterRows, foodHistory, weights, fasts, partnershipRows, inviteRows, privacyRows] = await Promise.all([
+    sql`SELECT * FROM pairfuel_profiles WHERE user_id=${user.id}`,
+    tab === "today"
+      ? sql`SELECT COALESCE(SUM(calories),0)::int calories,COALESCE(SUM(protein),0)::numeric protein,COALESCE(SUM(carbs),0)::numeric carbs,COALESCE(SUM(fat),0)::numeric fat FROM pairfuel_food_logs WHERE user_id=${user.id} AND logged_at >= (date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta') AT TIME ZONE 'Asia/Jakarta') AND logged_at < ((date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta')+interval '1 day') AT TIME ZONE 'Asia/Jakarta')`
+      : Promise.resolve([]),
+    tab === "today"
+      ? sql`SELECT COALESCE(amount_ml,0)::int amount_ml FROM pairfuel_water_logs WHERE user_id=${user.id} AND logged_on=(now() AT TIME ZONE 'Asia/Jakarta')::date`
+      : Promise.resolve([]),
+    tab === "history"
+      ? sql`SELECT id,logged_at,meal,food_name,calories,protein,carbs,fat FROM pairfuel_food_logs WHERE user_id=${user.id} ORDER BY logged_at DESC LIMIT 100`
+      : Promise.resolve([]),
+    tab === "weight"
+      ? sql`SELECT logged_on,weight FROM pairfuel_weight_logs WHERE user_id=${user.id} ORDER BY logged_on DESC LIMIT 30`
+      : Promise.resolve([]),
+    tab === "fasting"
+      ? sql`SELECT id,started_at,ended_at,target_hours FROM pairfuel_fasting_sessions WHERE user_id=${user.id} ORDER BY started_at DESC LIMIT 20`
+      : Promise.resolve([]),
+    needsPartnership
+      ? sql`SELECT *,CASE WHEN user_a_id=${user.id} THEN user_b_id ELSE user_a_id END partner_id FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id} LIMIT 1`
+      : Promise.resolve([]),
+    tab === "together"
+      ? sql`SELECT code,expires_at FROM pairfuel_partner_invites WHERE inviter_user_id=${user.id} AND accepted_at IS NULL AND expires_at>now() ORDER BY created_at DESC LIMIT 1`
+      : Promise.resolve([]),
+    tab === "settings"
+      ? sql`SELECT * FROM pairfuel_partner_privacy WHERE user_id=${user.id}`
+      : Promise.resolve([]),
+  ]);
+
+  let profile = profileRows[0];
+  if (!profile) {
+    await ensureUser(user);
+    [profile] = await sql`SELECT * FROM pairfuel_profiles WHERE user_id=${user.id}`;
+  }
+  const today = todayRows[0] ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  const water = waterRows[0] ?? { amount_ml: 0 };
+  const partnership = partnershipRows[0];
+  const invite = inviteRows[0];
+  const privacy = privacyRows[0] ?? {
+    share_calories: false,
+    share_macros: false,
+    share_meals: false,
+    share_fasting: false,
+    share_water: false,
+    share_weight: false,
+    share_weight_change: false,
+  };
 
   let partner: any = null;
-  if (partnership) {
+  if (partnership && tab === "together") {
     const pid = partnership.partner_id;
-    const [pp] = await sql`SELECT p.*,pr.* FROM pairfuel_profiles p LEFT JOIN pairfuel_partner_privacy pr ON pr.user_id=p.user_id WHERE p.user_id=${pid}`;
-    const [pt] = await sql`SELECT COALESCE(SUM(calories),0)::int calories,COALESCE(SUM(protein),0)::numeric protein FROM pairfuel_food_logs WHERE user_id=${pid} AND (logged_at AT TIME ZONE 'Asia/Jakarta')::date=(now() AT TIME ZONE 'Asia/Jakarta')::date`;
-    const [pw] = await sql`SELECT COALESCE(amount_ml,0)::int amount_ml FROM pairfuel_water_logs WHERE user_id=${pid} AND logged_on=(now() AT TIME ZONE 'Asia/Jakarta')::date`;
-    const [pweight] = await sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on DESC LIMIT 1`;
-    const [pfirst] = await sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on ASC LIMIT 1`;
-    const [pfast] = await sql`SELECT started_at,ended_at,target_hours FROM pairfuel_fasting_sessions WHERE user_id=${pid} ORDER BY started_at DESC LIMIT 1`;
+    const [ppRows, ptRows, pwRows, pweightRows, pfirstRows, pfastRows] = await Promise.all([
+      sql`SELECT p.*,pr.* FROM pairfuel_profiles p LEFT JOIN pairfuel_partner_privacy pr ON pr.user_id=p.user_id WHERE p.user_id=${pid}`,
+      sql`SELECT COALESCE(SUM(calories),0)::int calories,COALESCE(SUM(protein),0)::numeric protein FROM pairfuel_food_logs WHERE user_id=${pid} AND logged_at >= (date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta') AT TIME ZONE 'Asia/Jakarta') AND logged_at < ((date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta')+interval '1 day') AT TIME ZONE 'Asia/Jakarta')`,
+      sql`SELECT COALESCE(amount_ml,0)::int amount_ml FROM pairfuel_water_logs WHERE user_id=${pid} AND logged_on=(now() AT TIME ZONE 'Asia/Jakarta')::date`,
+      sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on DESC LIMIT 1`,
+      sql`SELECT weight FROM pairfuel_weight_logs WHERE user_id=${pid} ORDER BY logged_on ASC LIMIT 1`,
+      sql`SELECT started_at,ended_at,target_hours FROM pairfuel_fasting_sessions WHERE user_id=${pid} ORDER BY started_at DESC LIMIT 1`,
+    ]);
+    const [pp] = ppRows;
+    const [pt] = ptRows;
+    const [pw] = pwRows;
+    const [pweight] = pweightRows;
+    const [pfirst] = pfirstRows;
+    const [pfast] = pfastRows;
     partner = { ...pp, today: pt, water: pw ?? { amount_ml: 0 }, weight: pweight?.weight, weightChange: pweight && pfirst ? Number(pweight.weight) - Number(pfirst.weight) : null, fast: pfast };
   }
-
-  const tabs = [["today","Today"],["history","All time"],["fasting","Fasting"],["weight","Weight"],["together","Together"],["goals","Goals"],["settings","Privacy"]];
 
   return <main className="shell">
     <header className="topbar"><div><strong>PairFuel</strong><div className="muted">Hi, {profile.display_name || user.name || "Friend"}</div></div><LogoutButton /></header>
@@ -207,8 +264,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Search
       {message && <div className="notice" style={{ marginBottom: 16 }}>{message}</div>}
 
       {tab === "today" && <>
-        <div className="stats"><div className="stat"><span className="muted">Calories</span><b>{today.calories} / {profile.calorie_target}</b></div><div className="stat"><span className="muted">Protein</span><b>{Math.round(Number(today.protein))} / {profile.protein_target}g</b></div><div className="stat"><span className="muted">Water</span><b>{water?.amount_ml || 0} / {profile.water_target} ml</b></div><div className="stat"><span className="muted">Partner</span><b>{partner ? "Connected" : "Solo"}</b></div></div>
-        <StoryShare showTogether={Boolean(partner)} />
+        <div className="stats"><div className="stat"><span className="muted">Calories</span><b>{today.calories} / {profile.calorie_target}</b></div><div className="stat"><span className="muted">Protein</span><b>{Math.round(Number(today.protein))} / {profile.protein_target}g</b></div><div className="stat"><span className="muted">Water</span><b>{water?.amount_ml || 0} / {profile.water_target} ml</b></div><div className="stat"><span className="muted">Partner</span><b>{partnership ? "Connected" : "Solo"}</b></div></div>
+        <StoryShare showTogether={Boolean(partnership)} />
         <div className="grid2">
           <form action={addFood} className="panel"><h2>Log food</h2><div className="form-row"><label className="field">Food<input name="food" placeholder="Chicken rice" required /></label><label className="field">Meal<select name="meal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>First Meal</option></select></label></div><div className="form-row"><label className="field">Calories<input name="calories" type="number" min="0" required /></label><label className="field">Date & time (WIB)<input name="loggedAt" type="datetime-local" required /></label></div><div className="form-row"><label className="field">Protein (g)<input name="protein" type="number" step="0.1" min="0" defaultValue="0" /></label><label className="field">Carbs (g)<input name="carbs" type="number" step="0.1" min="0" defaultValue="0" /></label></div><label className="field">Fat (g)<input name="fat" type="number" step="0.1" min="0" defaultValue="0" /></label><button className="button">Add food</button></form>
           <div className="panel"><h2>Quick actions</h2><form action={addWater}><input type="hidden" name="amount" value="250" /><button className="button">+ 250 ml water</button></form><p className="muted">Today follows Asia/Jakarta (WIB). All logs are stored in Neon.</p></div>
