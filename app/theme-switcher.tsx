@@ -26,6 +26,7 @@ export default function ThemeSwitcher() {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
     window.localStorage.setItem("pairfuel-theme", nextTheme);
+    window.dispatchEvent(new CustomEvent("pairfuel-theme-change", { detail: nextTheme }));
   }
 
   return (
