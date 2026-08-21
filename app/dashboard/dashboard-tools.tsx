@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import AiAssistant from "./ai-assistant";
 import LogEditor from "./log-editor";
+import PartnerChat from "./partner-chat";
+import "./partner-chat.css";
 
 const STORAGE_KEY = "pairfuel-dashboard-tools-minimized";
 
@@ -44,6 +46,7 @@ export default function DashboardTools() {
 
       {!minimized && (
         <div className="dashboard-tools-menu">
+          <PartnerChat />
           <AiAssistant />
           <LogEditor />
           <a
