@@ -7,6 +7,7 @@ import { formatJakartaDateTime, jakartaLocalToIso } from "@/lib/time";
 import { dateOnly, numberInRange, oneOf, requiredText } from "@/lib/validation";
 import StoryShare from "./story-share";
 import LogoutButton from "./logout-button";
+import StatIcon from "./stat-icons";
 
 export const dynamic = "force-dynamic";
 
@@ -264,7 +265,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Search
       {message && <div className="notice" style={{ marginBottom: 16 }}>{message}</div>}
 
       {tab === "today" && <>
-        <div className="stats"><div className="stat"><span className="muted">Calories</span><b>{today.calories} / {profile.calorie_target}</b></div><div className="stat"><span className="muted">Protein</span><b>{Math.round(Number(today.protein))} / {profile.protein_target}g</b></div><div className="stat"><span className="muted">Water</span><b>{water?.amount_ml || 0} / {profile.water_target} ml</b></div><div className="stat"><span className="muted">Partner</span><b>{partnership ? "Connected" : "Solo"}</b></div></div>
+        <div className="stats">
+          <div className="stat"><div className="stat-head"><span className="stat-icon stat-icon-calories"><StatIcon kind="calories" /></span><span className="muted">Calories</span></div><b>{today.calories} / {profile.calorie_target}</b></div>
+          <div className="stat"><div className="stat-head"><span className="stat-icon stat-icon-protein"><StatIcon kind="protein" /></span><span className="muted">Protein</span></div><b>{Math.round(Number(today.protein))} / {profile.protein_target}g</b></div>
+          <div className="stat"><div className="stat-head"><span className="stat-icon stat-icon-water"><StatIcon kind="water" /></span><span className="muted">Water</span></div><b>{water?.amount_ml || 0} / {profile.water_target} ml</b></div>
+          <div className="stat"><div className="stat-head"><span className="stat-icon stat-icon-partner"><StatIcon kind="partner" /></span><span className="muted">Partner</span></div><b>{partnership ? "Connected" : "Solo"}</b></div>
+        </div>
         <StoryShare showTogether={Boolean(partnership)} />
         <div className="grid2">
           <form action={addFood} className="panel"><h2>Log food</h2><div className="form-row"><label className="field">Food<input name="food" placeholder="Chicken rice" required /></label><label className="field">Meal<select name="meal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>First Meal</option></select></label></div><div className="form-row"><label className="field">Calories<input name="calories" type="number" min="0" required /></label><label className="field">Date & time (WIB)<input name="loggedAt" type="datetime-local" required /></label></div><div className="form-row"><label className="field">Protein (g)<input name="protein" type="number" step="0.1" min="0" defaultValue="0" /></label><label className="field">Carbs (g)<input name="carbs" type="number" step="0.1" min="0" defaultValue="0" /></label></div><label className="field">Fat (g)<input name="fat" type="number" step="0.1" min="0" defaultValue="0" /></label><button className="button">Add food</button></form>

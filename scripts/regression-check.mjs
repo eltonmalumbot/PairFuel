@@ -16,6 +16,10 @@ const aiHistory = await text("app/api/ai/history/route.ts");
 const aiAssistant = await text("app/dashboard/ai-assistant.tsx");
 const dashboardLayout = await text("app/dashboard/layout.tsx");
 const dashboardTools = await text("app/dashboard/dashboard-tools.tsx");
+const storyShare = await text("app/dashboard/story-share.tsx");
+const dailyStoryRoute = await text("app/api/story/daily/route.tsx");
+const togetherStoryRoute = await text("app/api/story/together/route.tsx");
+const statIcons = await text("app/dashboard/stat-icons.tsx");
 
 assert.match(time, /Asia\/Jakarta/, "Timezone helper must remain Asia/Jakarta");
 assert.match(dashboard, /AT TIME ZONE 'Asia\/Jakarta'/, "Dashboard Today queries must remain WIB-safe");
@@ -53,6 +57,11 @@ assert.match(schema, /pairfuel_one_active_fast_per_user_idx/, "Only one active f
 assert.match(dashboardLayout, /DashboardTools/, "Dashboard must mount the dashboard tools container");
 assert.match(dashboardTools, /AiAssistant/, "Dashboard tools must keep the popup AI calorie assistant mounted");
 assert.match(dashboardTools, /dashboard-tools-minimized/, "Dashboard tools must persist minimized state");
+assert.match(dashboard, /stat-icon-partner/, "Partner summary must show its red heart icon");
+assert.match(statIcons, /StatIconKind/, "Dashboard summary icons must remain lightweight SVG components");
+assert.match(storyShare, /theme=\$\{theme\}/, "Story requests must include the active visual theme");
+assert.match(dailyStoryRoute, /getStoryTheme\(request\)/, "Daily Story must use the requested theme palette");
+assert.match(togetherStoryRoute, /getStoryTheme\(request\)/, "Together Story must use the requested theme palette");
 
 for (const route of [
   "app/auth/forgot-password/page.tsx",

@@ -220,6 +220,38 @@ body::after {
   box-shadow: 0 24px 58px var(--shadow), 0 0 0 4px var(--ring);
 }
 
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.42);
+}
+
+.stat-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.stat-icon-calories { color: #f06435; background: rgba(255, 130, 79, .16); }
+.stat-icon-protein { color: #9d5ad0; background: rgba(157, 90, 208, .14); }
+.stat-icon-water { color: #269fd8; background: rgba(38, 159, 216, .14); }
+.stat-icon-partner { color: #ed3f59; background: rgba(237, 63, 89, .14); }
+
+.story-preview-shell {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  box-shadow: 0 20px 60px var(--shadow), 0 0 0 5px var(--ring);
+}
+
 :root[data-theme="pink"] .card,
 :root[data-theme="pink"] .panel,
 :root[data-theme="pink"] .stat,

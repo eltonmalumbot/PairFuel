@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type StoryType = "daily" | "together";
+type Theme = "green" | "pink" | "blue";
 
 type StoryShareProps = {
   showTogether: boolean;
@@ -14,13 +15,25 @@ export default function StoryShare({ showTogether }: StoryShareProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [previewNonce, setPreviewNonce] = useState(0);
+  const [theme, setTheme] = useState<Theme>("green");
 
-  const url = `/api/story/${type}`;
-  const previewUrl = useMemo(() => `${url}?preview=${previewNonce}`, [url, previewNonce]);
+  const url = `/api/story/${type}?theme=${theme}`;
+  const previewUrl = useMemo(() => `${url}&preview=${previewNonce}`, [url, previewNonce]);
 
   useEffect(() => {
     if (!open) setMessage("");
   }, [open]);
+
+  useEffect(() => {
+    function syncTheme() {
+      const current = document.documentElement.dataset.theme;
+      if (current === "green" || current === "pink" || current === "blue") setTheme(current);
+    }
+
+    syncTheme();
+    window.addEventListener("pairfuel-theme-change", syncTheme);
+    return () => window.removeEventListener("pairfuel-theme-change", syncTheme);
+  }, []);
 
   function chooseType(nextType: StoryType) {
     setType(nextType);
