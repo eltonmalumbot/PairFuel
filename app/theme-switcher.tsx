@@ -10,7 +10,7 @@ const themes: Array<{ key: Theme; label: string }> = [
   { key: "blue", label: "Blue" },
 ];
 
-function isTheme(value: string | null): value is Theme {
+function isTheme(value: string | null | undefined): value is Theme {
   return value === "green" || value === "pink" || value === "blue";
 }
 
@@ -19,7 +19,9 @@ export default function ThemeSwitcher() {
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme;
-    if (isTheme(current ?? null)) setTheme(current);
+    if (isTheme(current)) {
+      setTheme(current);
+    }
   }, []);
 
   function applyTheme(nextTheme: Theme) {
