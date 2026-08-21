@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const themeBootstrap = `
   try {
     var savedTheme = localStorage.getItem("pairfuel-theme");
-    var theme = savedTheme === "pink" || savedTheme === "blue" || savedTheme === "green" ? savedTheme : "green";
+    var theme = savedTheme === "pink" || savedTheme === "blue" || savedTheme === "green" || savedTheme === "midnight" ? savedTheme : "green";
     document.documentElement.dataset.theme = theme;
   } catch (_) {
     document.documentElement.dataset.theme = "green";
