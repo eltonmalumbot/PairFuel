@@ -40,12 +40,6 @@
   min-width: 0;
 }
 
-.daily-quote > span:last-child::before {
-  content: "Elton & Jessica 💕 — ";
-  color: var(--accent2);
-  font-weight: 800;
-}
-
 :root[data-theme="pink"] .daily-quote {
   border-radius: 999px;
 }
