@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import AiAssistant from "./ai-assistant";
 import LogEditor from "./log-editor";
+import "./log-editor.css";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return <>
