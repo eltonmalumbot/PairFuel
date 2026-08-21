@@ -34,6 +34,11 @@ assert.doesNotMatch(calorieAi, /OPENAI_API_KEY|api\.openai\.com/, "Calorie AI mu
 assert.match(calorieAi, /pairfuel_ai_rate_limits/, "Calorie AI must enforce a persistent per-user rate limit");
 assert.match(calorieAi, /AbortSignal\.timeout/, "Calorie AI upstream requests must have a timeout");
 assert.match(dashboard, /Promise\.all\(/, "Dashboard queries must avoid sequential waterfalls");
+assert.match(
+  dashboard,
+  /VALUES\(\$\{user\.id\},\$\{loggedAt\},\$\{meal\},\$\{food\},\$\{calories\},\$\{protein\},\$\{carbs\},\$\{fat\}\)/,
+  "Food insert must keep its closing parenthesis",
+);
 assert.match(story, /Promise\.all\(/, "Story queries must avoid sequential waterfalls");
 assert.match(schema, /pairfuel_one_active_fast_per_user_idx/, "Only one active fasting session is allowed per user");
 assert.match(dashboardLayout, /\/dashboard\/ask-ai/, "Dashboard must expose the AI calorie assistant");
