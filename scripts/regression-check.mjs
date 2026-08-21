@@ -15,6 +15,7 @@ const calorieAi = await text("app/api/ai/calories/route.ts");
 const aiHistory = await text("app/api/ai/history/route.ts");
 const aiAssistant = await text("app/dashboard/ai-assistant.tsx");
 const dashboardLayout = await text("app/dashboard/layout.tsx");
+const dashboardTools = await text("app/dashboard/dashboard-tools.tsx");
 
 assert.match(time, /Asia\/Jakarta/, "Timezone helper must remain Asia/Jakarta");
 assert.match(dashboard, /AT TIME ZONE 'Asia\/Jakarta'/, "Dashboard Today queries must remain WIB-safe");
@@ -49,7 +50,9 @@ assert.match(
 );
 assert.match(story, /Promise\.all\(/, "Story queries must avoid sequential waterfalls");
 assert.match(schema, /pairfuel_one_active_fast_per_user_idx/, "Only one active fasting session is allowed per user");
-assert.match(dashboardLayout, /AiAssistant/, "Dashboard must mount the popup AI calorie assistant");
+assert.match(dashboardLayout, /DashboardTools/, "Dashboard must mount the dashboard tools container");
+assert.match(dashboardTools, /AiAssistant/, "Dashboard tools must keep the popup AI calorie assistant mounted");
+assert.match(dashboardTools, /dashboard-tools-minimized/, "Dashboard tools must persist minimized state");
 
 for (const route of [
   "app/auth/forgot-password/page.tsx",
@@ -58,6 +61,7 @@ for (const route of [
   "app/dashboard/analytics/page.tsx",
   "app/dashboard/ask-ai/page.tsx",
   "app/dashboard/ai-assistant.tsx",
+  "app/dashboard/dashboard-tools.tsx",
   "app/api/ai/calories/route.ts",
   "app/api/ai/history/route.ts",
 ]) {
