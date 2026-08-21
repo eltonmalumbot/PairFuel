@@ -1,0 +1,68 @@
+.log-editor-modal {
+  width: min(920px, 100%);
+  grid-template-rows: auto auto auto minmax(180px, 1fr) auto;
+}
+
+.log-editor-tabs {
+  padding: 0 20px;
+  margin: 16px 0 8px;
+}
+
+.log-editor-list {
+  overflow-y: auto;
+  min-height: 180px;
+  padding: 8px 20px 18px;
+}
+
+.log-editor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.log-editor-row > div {
+  min-width: 0;
+}
+
+.log-editor-row .ghost {
+  flex: 0 0 auto;
+  padding: 9px 13px;
+}
+
+.log-edit-form {
+  padding: 18px 20px 20px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 82%, var(--modal-bg));
+  overflow-y: auto;
+}
+
+.log-edit-form h3 {
+  margin: 0 0 12px;
+}
+
+.log-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .log-editor-tabs,
+  .log-editor-list,
+  .log-edit-form {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .log-editor-row {
+    align-items: flex-start;
+  }
+
+  .log-edit-actions > * {
+    flex: 1;
+  }
+}
