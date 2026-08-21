@@ -57,53 +57,57 @@ function headlineFor(calories: number, target: number) {
 async function getUserMetrics(userId: string): Promise<DailyStoryData> {
   const sql = db();
 
-  const [profile] = await sql`
-    SELECT display_name, calorie_target, protein_target, water_target,
-           fasting_preset, diet_plans
-    FROM pairfuel_profiles
-    WHERE user_id = ${userId}
-    LIMIT 1
-  `;
-
-  const [food] = await sql`
-    SELECT COALESCE(SUM(calories),0)::int AS calories,
-           COALESCE(SUM(protein),0)::numeric AS protein
-    FROM pairfuel_food_logs
-    WHERE user_id = ${userId}
-      AND (logged_at AT TIME ZONE 'Asia/Jakarta')::date = (now() AT TIME ZONE 'Asia/Jakarta')::date
-  `;
-
-  const [water] = await sql`
-    SELECT COALESCE(amount_ml,0)::int AS amount_ml
-    FROM pairfuel_water_logs
-    WHERE user_id = ${userId}
-      AND logged_on = (now() AT TIME ZONE 'Asia/Jakarta')::date
-    LIMIT 1
-  `;
-
-  const [fast] = await sql`
-    SELECT started_at, ended_at, target_hours
-    FROM pairfuel_fasting_sessions
-    WHERE user_id = ${userId}
-    ORDER BY started_at DESC
-    LIMIT 1
-  `;
-
-  const [latestWeight] = await sql`
-    SELECT weight
-    FROM pairfuel_weight_logs
-    WHERE user_id = ${userId}
-    ORDER BY logged_on DESC
-    LIMIT 1
-  `;
-
-  const [firstWeight] = await sql`
-    SELECT weight
-    FROM pairfuel_weight_logs
-    WHERE user_id = ${userId}
-    ORDER BY logged_on ASC
-    LIMIT 1
-  `;
+  const [profileRows, foodRows, waterRows, fastRows, latestWeightRows, firstWeightRows] = await Promise.all([
+    sql`
+      SELECT display_name, calorie_target, protein_target, water_target,
+             fasting_preset, diet_plans
+      FROM pairfuel_profiles
+      WHERE user_id = ${userId}
+      LIMIT 1
+    `,
+    sql`
+      SELECT COALESCE(SUM(calories),0)::int AS calories,
+             COALESCE(SUM(protein),0)::numeric AS protein
+      FROM pairfuel_food_logs
+      WHERE user_id = ${userId}
+        AND logged_at >= (date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta') AT TIME ZONE 'Asia/Jakarta')
+        AND logged_at < ((date_trunc('day',now() AT TIME ZONE 'Asia/Jakarta')+interval '1 day') AT TIME ZONE 'Asia/Jakarta')
+    `,
+    sql`
+      SELECT COALESCE(amount_ml,0)::int AS amount_ml
+      FROM pairfuel_water_logs
+      WHERE user_id = ${userId}
+        AND logged_on = (now() AT TIME ZONE 'Asia/Jakarta')::date
+      LIMIT 1
+    `,
+    sql`
+      SELECT started_at, ended_at, target_hours
+      FROM pairfuel_fasting_sessions
+      WHERE user_id = ${userId}
+      ORDER BY started_at DESC
+      LIMIT 1
+    `,
+    sql`
+      SELECT weight
+      FROM pairfuel_weight_logs
+      WHERE user_id = ${userId}
+      ORDER BY logged_on DESC
+      LIMIT 1
+    `,
+    sql`
+      SELECT weight
+      FROM pairfuel_weight_logs
+      WHERE user_id = ${userId}
+      ORDER BY logged_on ASC
+      LIMIT 1
+    `,
+  ]);
+  const [profile] = profileRows;
+  const [food] = foodRows;
+  const [water] = waterRows;
+  const [fast] = fastRows;
+  const [latestWeight] = latestWeightRows;
+  const [firstWeight] = firstWeightRows;
 
   const calorieTarget = Number(profile?.calorie_target ?? 1900);
   const calories = Number(food?.calories ?? 0);
@@ -155,14 +159,16 @@ export async function getDailyStoryData(userId: string) {
 
 export async function getTogetherStoryData(userId: string): Promise<TogetherStoryData> {
   const sql = db();
-  const me = await getUserMetrics(userId);
-
-  const [partnership] = await sql`
-    SELECT CASE WHEN user_a_id = ${userId} THEN user_b_id ELSE user_a_id END AS partner_id
-    FROM pairfuel_partnerships
-    WHERE user_a_id = ${userId} OR user_b_id = ${userId}
-    LIMIT 1
-  `;
+  const [me, partnershipRows] = await Promise.all([
+    getUserMetrics(userId),
+    sql`
+      SELECT CASE WHEN user_a_id = ${userId} THEN user_b_id ELSE user_a_id END AS partner_id
+      FROM pairfuel_partnerships
+      WHERE user_a_id = ${userId} OR user_b_id = ${userId}
+      LIMIT 1
+    `,
+  ]);
+  const [partnership] = partnershipRows;
 
   if (!partnership?.partner_id) {
     return {
@@ -175,15 +181,17 @@ export async function getTogetherStoryData(userId: string): Promise<TogetherStor
   }
 
   const partnerId = String(partnership.partner_id);
-  const partnerMetrics = await getUserMetrics(partnerId);
-
-  const [privacy] = await sql`
-    SELECT share_calories, share_macros, share_fasting, share_water,
-           share_weight, share_weight_change
-    FROM pairfuel_partner_privacy
-    WHERE user_id = ${partnerId}
-    LIMIT 1
-  `;
+  const [partnerMetrics, privacyRows] = await Promise.all([
+    getUserMetrics(partnerId),
+    sql`
+      SELECT share_calories, share_macros, share_fasting, share_water,
+             share_weight, share_weight_change
+      FROM pairfuel_partner_privacy
+      WHERE user_id = ${partnerId}
+      LIMIT 1
+    `,
+  ]);
+  const [privacy] = privacyRows;
 
   const shareCalories = Boolean(privacy?.share_calories);
   const shareMacros = Boolean(privacy?.share_macros);

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { formatJakartaDateTime, jakartaLocalToIso } from "@/lib/time";
+import { numberInRange, oneOf, requiredText } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,16 @@ const MOTIVATIONS = [
   "Do not punish yourself with shame. Use the moment as data, then return to your plan.",
   "You and your partner are on the same team. Be honest, kind, and consistent.",
 ];
+
+const SLIP_CATEGORIES = [
+  "Broke fasting window",
+  "Over calorie target",
+  "Binge / overeating",
+  "Unplanned snack",
+  "Sugary drink",
+  "Skipped planned meal",
+  "Other",
+] as const;
 
 async function currentUser() {
   const { data: session } = await auth.getSession();
@@ -25,13 +36,15 @@ async function addSlip(fd: FormData) {
   const user = await currentUser();
   const sql = db();
   const happenedAt = jakartaLocalToIso(String(fd.get("happenedAt") || ""));
-  const category = String(fd.get("category") || "Other");
-  const title = String(fd.get("title") || "Diet slip-up").trim().slice(0, 180);
+  const category = oneOf(fd.get("category"), SLIP_CATEGORIES, "Other");
+  const title = requiredText(fd.get("title"), "Title", 180);
   const trigger = String(fd.get("trigger") || "").trim().slice(0, 500);
   const reflection = String(fd.get("reflection") || "").trim().slice(0, 3000);
   const recovery = String(fd.get("recovery") || "").trim().slice(0, 3000);
   const estimatedCaloriesRaw = String(fd.get("estimatedCalories") || "").trim();
-  const estimatedCalories = estimatedCaloriesRaw ? Math.max(0, Number(estimatedCaloriesRaw)) : null;
+  const estimatedCalories = estimatedCaloriesRaw
+    ? numberInRange(fd.get("estimatedCalories"), "Estimated calories", 0, 20_000)
+    : null;
   const shareWithPartner = fd.get("shareWithPartner") === "on";
 
   await sql`INSERT INTO pairfuel_slip_logs(user_id,happened_at,category,title,trigger,reflection,recovery_plan,estimated_calories,share_with_partner) VALUES(${user.id},${happenedAt},${category},${title},${trigger || null},${reflection || null},${recovery || null},${estimatedCalories},${shareWithPartner})`;
@@ -50,8 +63,11 @@ async function resolveSlip(fd: FormData) {
 export default async function SinListPage() {
   const user = await currentUser();
   const sql = db();
-  const logs = await sql`SELECT id,happened_at,category,title,trigger,reflection,recovery_plan,estimated_calories,share_with_partner,resolved_at FROM pairfuel_slip_logs WHERE user_id=${user.id} ORDER BY happened_at DESC LIMIT 100`;
-  const [partnership] = await sql`SELECT CASE WHEN user_a_id=${user.id} THEN user_b_id ELSE user_a_id END partner_id FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id} LIMIT 1`;
+  const [logs, partnershipRows] = await Promise.all([
+    sql`SELECT id,happened_at,category,title,trigger,reflection,recovery_plan,estimated_calories,share_with_partner,resolved_at FROM pairfuel_slip_logs WHERE user_id=${user.id} ORDER BY happened_at DESC LIMIT 100`,
+    sql`SELECT CASE WHEN user_a_id=${user.id} THEN user_b_id ELSE user_a_id END partner_id FROM pairfuel_partnerships WHERE user_a_id=${user.id} OR user_b_id=${user.id} LIMIT 1`,
+  ]);
+  const [partnership] = partnershipRows;
   let partnerLogs: any[] = [];
   if (partnership) {
     partnerLogs = await sql`SELECT id,happened_at,category,title,trigger,reflection,recovery_plan,estimated_calories,resolved_at FROM pairfuel_slip_logs WHERE user_id=${partnership.partner_id} AND share_with_partner=true ORDER BY happened_at DESC LIMIT 30`;

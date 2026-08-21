@@ -20,7 +20,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Se
   const sql = db();
   const userId = session.user.id;
 
-  const [summary] = await sql`
+  const [summaryRows, daily, recent] = await Promise.all([sql`
     WITH filtered AS (
       SELECT *, (logged_at AT TIME ZONE 'Asia/Jakarta')::date AS local_day
       FROM pairfuel_food_logs
@@ -42,9 +42,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Se
       COUNT(DISTINCT local_day)::int AS days_tracked,
       MIN(logged_at) AS first_log,
       MAX(logged_at) AS last_log
-    FROM filtered`;
-
-  const daily = await sql`
+    FROM filtered`, sql`
     SELECT
       (logged_at AT TIME ZONE 'Asia/Jakarta')::date AS day,
       SUM(calories)::int AS calories,
@@ -60,9 +58,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Se
       )
     GROUP BY 1
     ORDER BY 1 DESC
-    LIMIT 366`;
-
-  const recent = await sql`
+    LIMIT 366`, sql`
     SELECT id,logged_at,meal,food_name,calories,protein
     FROM pairfuel_food_logs
     WHERE user_id=${userId}
@@ -74,7 +70,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Se
         OR (${range}='year' AND date_trunc('year', logged_at AT TIME ZONE 'Asia/Jakarta') = date_trunc('year', now() AT TIME ZONE 'Asia/Jakarta'))
       )
     ORDER BY logged_at DESC
-    LIMIT 100`;
+    LIMIT 100`]);
+  const [summary] = summaryRows;
 
   const days = Math.max(1, Number(summary.days_tracked || 0));
   const averageCalories = Number(summary.days_tracked || 0) ? Math.round(Number(summary.total_calories || 0) / days) : 0;

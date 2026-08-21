@@ -26,11 +26,16 @@ assert.match(errorBoundary, /Something went wrong/, "Global route error boundary
 assert.match(schema, /share_calories boolean NOT NULL DEFAULT false/, "New users must not share calories by default");
 assert.match(schema, /share_macros boolean NOT NULL DEFAULT false/, "New users must not share macros by default");
 assert.match(schema, /share_weight boolean NOT NULL DEFAULT false/, "Absolute weight must remain private by default");
-assert.match(schema, /share_weight_change boolean NOT NULL DEFAULT true/, "Weight-change-only sharing remains the privacy-friendly default");
+assert.match(schema, /share_weight_change boolean NOT NULL DEFAULT false/, "Partner metrics must require explicit opt-in");
 assert.match(calorieAi, /auth\.getSession\(\)/, "Calorie AI must require an authenticated PairFuel session");
 assert.match(calorieAi, /process\.env\.GEMINI_API_KEY/, "Gemini key must remain server-side");
 assert.match(calorieAi, /gemini-3\.5-flash-lite/, "Calorie AI must keep the current Gemini fallback model");
 assert.doesNotMatch(calorieAi, /OPENAI_API_KEY|api\.openai\.com/, "Calorie AI must not depend on OpenAI");
+assert.match(calorieAi, /pairfuel_ai_rate_limits/, "Calorie AI must enforce a persistent per-user rate limit");
+assert.match(calorieAi, /AbortSignal\.timeout/, "Calorie AI upstream requests must have a timeout");
+assert.match(dashboard, /Promise\.all\(/, "Dashboard queries must avoid sequential waterfalls");
+assert.match(story, /Promise\.all\(/, "Story queries must avoid sequential waterfalls");
+assert.match(schema, /pairfuel_one_active_fast_per_user_idx/, "Only one active fasting session is allowed per user");
 assert.match(dashboardLayout, /\/dashboard\/ask-ai/, "Dashboard must expose the AI calorie assistant");
 
 for (const route of [

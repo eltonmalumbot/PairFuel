@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS pairfuel_fasting_sessions (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS pairfuel_fasting_user_time_idx ON pairfuel_fasting_sessions(user_id, started_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS pairfuel_one_active_fast_per_user_idx ON pairfuel_fasting_sessions(user_id) WHERE ended_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS pairfuel_partner_invites (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -85,7 +86,7 @@ CREATE TABLE IF NOT EXISTS pairfuel_partner_privacy (
   share_fasting boolean NOT NULL DEFAULT false,
   share_water boolean NOT NULL DEFAULT false,
   share_weight boolean NOT NULL DEFAULT false,
-  share_weight_change boolean NOT NULL DEFAULT true,
+  share_weight_change boolean NOT NULL DEFAULT false,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -104,3 +105,10 @@ CREATE TABLE IF NOT EXISTS pairfuel_slip_logs (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS pairfuel_slip_user_time_idx ON pairfuel_slip_logs(user_id, happened_at DESC);
+
+CREATE TABLE IF NOT EXISTS pairfuel_ai_rate_limits (
+  user_id text PRIMARY KEY,
+  window_started_at timestamptz NOT NULL DEFAULT now(),
+  request_count integer NOT NULL DEFAULT 0 CHECK (request_count >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth/server";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,26 @@ function responseText(data: GeminiResponse) {
     .trim();
 }
 
+async function withinRateLimit(userId: string) {
+  const sql = db();
+  const [usage] = await sql`
+    INSERT INTO pairfuel_ai_rate_limits(user_id,window_started_at,request_count,updated_at)
+    VALUES(${userId},now(),1,now())
+    ON CONFLICT(user_id) DO UPDATE SET
+      window_started_at=CASE
+        WHEN pairfuel_ai_rate_limits.window_started_at < now()-interval '1 minute' THEN now()
+        ELSE pairfuel_ai_rate_limits.window_started_at
+      END,
+      request_count=CASE
+        WHEN pairfuel_ai_rate_limits.window_started_at < now()-interval '1 minute' THEN 1
+        ELSE pairfuel_ai_rate_limits.request_count+1
+      END,
+      updated_at=now()
+    RETURNING request_count
+  `;
+  return Number(usage?.request_count ?? 1) <= 10;
+}
+
 export async function POST(request: Request) {
   const { data: session } = await auth.getSession();
   if (!session?.user) {
@@ -70,9 +91,20 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!(await withinRateLimit(session.user.id))) {
+    return Response.json(
+      { error: "Too many AI requests. Please wait a minute and try again." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
+
   let body: unknown;
   try {
-    body = await request.json();
+    const rawBody = await request.text();
+    if (rawBody.length > 20_000) {
+      return Response.json({ error: "Request body is too large." }, { status: 413 });
+    }
+    body = JSON.parse(rawBody);
   } catch {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -110,6 +142,7 @@ export async function POST(request: Request) {
               maxOutputTokens: 450,
             },
           }),
+          signal: AbortSignal.timeout(20_000),
         },
       );
 
