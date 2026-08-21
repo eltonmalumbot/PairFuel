@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 function internalDashboardHref(anchor: HTMLAnchorElement) {
   const url = new URL(anchor.href, window.location.href);
@@ -11,9 +11,6 @@ function internalDashboardHref(anchor: HTMLAnchorElement) {
 
 export default function SmoothDashboardNavigation() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const search = searchParams.toString();
 
   useEffect(() => {
     const anchors = document.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard"]');
@@ -49,7 +46,7 @@ export default function SmoothDashboardNavigation() {
 
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [router, pathname, search]);
+  }, [router]);
 
   return null;
 }
