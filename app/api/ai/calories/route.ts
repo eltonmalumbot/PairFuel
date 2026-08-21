@@ -9,6 +9,14 @@ type ChatMessage = {
   content: string;
 };
 
+type Estimate = {
+  food: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
 type GeminiResponse = {
   candidates?: Array<{
     content?: {
@@ -33,7 +41,11 @@ Rules:
 - Do not diagnose or treat medical conditions.
 - Do not encourage starvation, purging, compensatory exercise, or extreme fasting.
 - Do not prescribe dangerously low calorie targets. PairFuel is a tracking tool, not medical advice.
-- If the user asks something unrelated to food calories/nutrition, gently steer them back to calorie and nutrition estimation.`;
+- If the user asks something unrelated to food calories/nutrition, gently steer them back to calorie and nutrition estimation.
+
+When you have enough information to produce a usable food-log estimate, append one final machine-readable line exactly in this format:
+PAIRFUEL_ESTIMATE: {"food":"short food name","calories":123,"protein":12.3,"carbs":34.5,"fat":6.7}
+Use one representative estimate for ranges. All numeric values must be numbers, not strings. Do not include this marker when the user's question is not a food estimate or when you need a follow-up question.`;
 
 function sanitizeMessages(value: unknown): ChatMessage[] {
   if (!Array.isArray(value)) return [];
@@ -55,6 +67,36 @@ function responseText(data: GeminiResponse) {
     .map((part) => part.text || "")
     .join("\n")
     .trim();
+}
+
+function parseEstimate(rawAnswer: string): { answer: string; estimate: Estimate | null } {
+  const marker = /(?:^|\n)PAIRFUEL_ESTIMATE:\s*(\{[^\n]+\})\s*$/;
+  const match = rawAnswer.match(marker);
+  if (!match) return { answer: rawAnswer, estimate: null };
+
+  let estimate: Estimate | null = null;
+  try {
+    const parsed = JSON.parse(match[1]) as Partial<Estimate>;
+    const food = typeof parsed.food === "string" ? parsed.food.trim().slice(0, 180) : "";
+    const calories = Number(parsed.calories);
+    const protein = Number(parsed.protein);
+    const carbs = Number(parsed.carbs);
+    const fat = Number(parsed.fat);
+
+    if (
+      food &&
+      Number.isFinite(calories) && calories >= 0 && calories <= 20_000 &&
+      Number.isFinite(protein) && protein >= 0 && protein <= 1_000 &&
+      Number.isFinite(carbs) && carbs >= 0 && carbs <= 2_000 &&
+      Number.isFinite(fat) && fat >= 0 && fat <= 1_000
+    ) {
+      estimate = { food, calories, protein, carbs, fat };
+    }
+  } catch {
+    estimate = null;
+  }
+
+  return { answer: rawAnswer.replace(marker, "").trim(), estimate };
 }
 
 async function withinRateLimit(userId: string) {
@@ -121,6 +163,7 @@ export async function POST(request: Request) {
 
   const configuredModel = process.env.GEMINI_MODEL?.trim();
   const models = Array.from(new Set([configuredModel, "gemini-3.5-flash-lite"].filter(Boolean))) as string[];
+  const userMessage = messages[messages.length - 1].content;
 
   try {
     for (const [index, model] of models.entries()) {
@@ -139,7 +182,7 @@ export async function POST(request: Request) {
             contents,
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 450,
+              maxOutputTokens: 520,
             },
           }),
           signal: AbortSignal.timeout(20_000),
@@ -148,11 +191,19 @@ export async function POST(request: Request) {
 
       const data = (await upstream.json()) as GeminiResponse;
       if (upstream.ok) {
-        const answer = responseText(data);
-        if (!answer) {
+        const rawAnswer = responseText(data);
+        if (!rawAnswer) {
           return Response.json({ error: "The calorie assistant returned an empty response." }, { status: 502 });
         }
-        return Response.json({ answer });
+
+        const { answer, estimate } = parseEstimate(rawAnswer);
+        const sql = db();
+        await sql.transaction([
+          sql`INSERT INTO pairfuel_ai_messages(user_id,role,content) VALUES(${session.user.id},'user',${userMessage})`,
+          sql`INSERT INTO pairfuel_ai_messages(user_id,role,content,estimate) VALUES(${session.user.id},'assistant',${answer},${estimate ? JSON.stringify(estimate) : null}::jsonb)`,
+        ]);
+
+        return Response.json({ answer, estimate });
       }
 
       const hasFallback = index < models.length - 1;
