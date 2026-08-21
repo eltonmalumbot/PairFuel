@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 
 type Theme = "green" | "pink" | "blue";
 
-const themes: Array<{ key: Theme; label: string }> = [
-  { key: "green", label: "Green" },
-  { key: "pink", label: "Pink" },
-  { key: "blue", label: "Blue" },
+const themes: Array<{ key: Theme; label: string; emoji: string }> = [
+  { key: "green", label: "Forest", emoji: "🌿" },
+  { key: "pink", label: "Blossom", emoji: "🌸" },
+  { key: "blue", label: "Sky", emoji: "☁️" },
 ];
 
 function isTheme(value: string | null | undefined): value is Theme {
@@ -19,9 +19,7 @@ export default function ThemeSwitcher() {
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme;
-    if (isTheme(current)) {
-      setTheme(current);
-    }
+    if (isTheme(current)) setTheme(current);
   }, []);
 
   function applyTheme(nextTheme: Theme) {
@@ -31,8 +29,8 @@ export default function ThemeSwitcher() {
   }
 
   return (
-    <div className="theme-switcher" role="group" aria-label="PairFuel color theme">
-      {themes.map(({ key, label }) => (
+    <div className="theme-switcher" role="group" aria-label="PairFuel visual theme">
+      {themes.map(({ key, label, emoji }) => (
         <button
           key={key}
           type="button"
@@ -41,7 +39,7 @@ export default function ThemeSwitcher() {
           title={`${label} theme`}
           onClick={() => applyTheme(key)}
         >
-          <span className={`theme-swatch ${key}`} aria-hidden="true" />
+          <span className="theme-emoji" aria-hidden="true">{emoji}</span>
           <span className="theme-label">{label}</span>
         </button>
       ))}
