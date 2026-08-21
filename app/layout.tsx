@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "./theme.css";
+import "./midnight-theme.css";
 import ThemeSwitcher from "./theme-switcher";
 
 export const metadata: Metadata = {
