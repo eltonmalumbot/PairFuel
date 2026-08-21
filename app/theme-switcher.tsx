@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-type Theme = "green" | "pink" | "blue";
+type Theme = "green" | "pink" | "blue" | "midnight";
 
 const themes: Array<{ key: Theme; label: string; emoji: string }> = [
   { key: "green", label: "Forest", emoji: "🌿" },
   { key: "pink", label: "Blossom", emoji: "🌸" },
   { key: "blue", label: "Sky", emoji: "☁️" },
+  { key: "midnight", label: "Midnight", emoji: "🌙" },
 ];
 
 function isTheme(value: string | null | undefined): value is Theme {
-  return value === "green" || value === "pink" || value === "blue";
+  return value === "green" || value === "pink" || value === "blue" || value === "midnight";
 }
 
 export default function ThemeSwitcher() {
