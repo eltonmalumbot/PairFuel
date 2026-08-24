@@ -1,31 +1,13 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "./theme.css";
 import "./midnight-theme.css";
-import "./mobile.css";
 import ThemeSwitcher from "./theme-switcher";
 
 export const metadata: Metadata = {
   title: "PairFuel — Better together",
   description: "Diet, fasting and calorie tracking for you and your partner.",
-  applicationName: "PairFuel",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "PairFuel",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
-  themeColor: "#07130e",
 };
 
 const themeBootstrap = `

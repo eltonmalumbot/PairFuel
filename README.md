@@ -24,7 +24,7 @@ PairFuel is a Next.js wellness tracker designed to work solo and become more use
 - Neon Postgres (`@neondatabase/serverless`)
 - Neon Auth (`@neondatabase/auth`)
 - Vercel-ready
-- Lightweight Android shell (Capacitor; remote Next.js backend)
+- Native Android app built with Kotlin and Jetpack Compose
 
 ## Local setup
 
@@ -36,13 +36,14 @@ PairFuel is a Next.js wellness tracker designed to work solo and become more use
 
 ## Android APK
 
-The Android project is intentionally a small native WebView shell. It loads the production PairFuel deployment, so Neon Auth, server routes, and AI features keep working without bundling a second JavaScript application into the APK.
+The Android project is a real native Kotlin application using Jetpack Compose. It does not render the website or include a WebView. The app talks to authenticated PairFuel API routes over HTTPS and keeps the interface, navigation, forms, and state native on the device.
 
 - Requirements: Android Studio with Android SDK 36 and JDK 17.
-- Refresh native configuration: `npm run android:sync`.
 - Build an installable debug APK: `npm run android:debug`.
 - Build the smaller minified APK: `npm run android:apk`.
 - Build a Play Store App Bundle: `npm run android:release`.
+
+The native MVP includes email authentication, daily calorie/macro/water progress, food logging, weight history, fasting controls, local green/pink/blue themes, and secure cookie-based API sessions. It deliberately uses the Android platform HTTP client instead of Retrofit and avoids database, image-loading, and animation libraries to keep the APK small.
 
 The minified APK is written to `android/app/build/outputs/apk/release/app-release.apk` and is signed with Android's development key for direct installation/testing. Before publishing, replace that signing configuration with a private release key and upload the generated `.aab` file to Google Play.
 
