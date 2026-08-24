@@ -127,7 +127,10 @@ class ApiClient(context: Context) {
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             val json = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
-            if (status !in 200..299) throw ApiException(json.optString("error", "Request failed."), status)
+            if (status !in 200..299) {
+                val message = json.optString("error").ifBlank { json.optString("message", "Request failed.") }
+                throw ApiException(message, status)
+            }
             return json
         } finally {
             connection.disconnect()
